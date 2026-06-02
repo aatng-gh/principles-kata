@@ -1,0 +1,26 @@
+{
+  "name": "principles-kata",
+  "version": "0.1.0",
+  "description": "Katas for Object-Oriented Design Principles (SOLID) and Functional Programming Design Principles in TypeScript",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:oop": "vitest run exercises/oop",
+    "test:fp": "vitest run exercises/fp",
+    "test:typescript": "vitest run exercises/typescript",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "validate:exercise": "bash scripts/validate-exercise.sh"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "expect-type": "^1.2.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

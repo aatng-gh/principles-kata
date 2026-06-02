@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Reference solutions (deliberately hidden on fresh clone; reveal only after using the judge)
+# To reveal: git checkout -- reference/solutions   or run the reveal instructions in README
+reference/solutions/
+
+# Temp
+tmp/
+*.tmp
