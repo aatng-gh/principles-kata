@@ -1,52 +1,85 @@
 // exercises/fp/declarative-transformation/02-intermediate-rule-engine/src/ruleEngine.ts
-// STARTER — long imperative function with mutation of context/flags and early exits.
-// Rules are "code" not data; adding rule means editing the big fn.
-
 export interface Facts {
-  age: number;
-  hasLicense: boolean;
-  isPremium: boolean;
-  purchaseAmount: number;
+  readonly age: number;
+  readonly hasLicense: boolean;
+  readonly isPremium: boolean;
+  readonly purchaseAmount: number;
 }
 
 export interface Decision {
-  approved: boolean;
-  discount: number;
-  reason: string;
+  readonly approved: boolean;
+  readonly discount: number;
+  readonly reason: string;
 }
 
-export function evaluatePolicy(facts: Facts): Decision {
-  let approved = false;
-  let discount = 0;
-  let reason = 'default';
+type NumberFact = 'age' | 'purchaseAmount';
+type BooleanFact = 'hasLicense' | 'isPremium';
 
-  // imperative + mutation + early-ish
-  if (facts.age < 18) {
-    approved = false;
-    reason = 'underage';
-    return { approved, discount, reason };
-  }
+type Predicate =
+  | { readonly kind: 'lessThan'; readonly fact: NumberFact; readonly value: number }
+  | { readonly kind: 'greaterThan'; readonly fact: NumberFact; readonly value: number }
+  | { readonly kind: 'isTrue'; readonly fact: BooleanFact }
+  | { readonly kind: 'not'; readonly predicate: Predicate }
+  | { readonly kind: 'and'; readonly predicates: readonly Predicate[] };
 
-  if (!facts.hasLicense && facts.purchaseAmount > 100) {
-    approved = false;
-    reason = 'needs license for large purchase';
-    return { approved, discount, reason };
-  }
-
-  approved = true;
-  if (facts.isPremium) {
-    discount = 0.2;
-    reason = 'premium';
-  } else if (facts.purchaseAmount > 200) {
-    discount = 0.1;
-    reason = 'bulk';
-  } else {
-    discount = 0.05;
-    reason = 'standard';
-  }
-
-  // side effecty in "engine"
-  console.log('[RULES] decided', reason, discount);
-
-  return { approved, discount, reason };
+interface Rule {
+  readonly when: Predicate;
+  readonly decision: Decision;
 }
+
+const reject = (reason: string): Decision => ({ approved: false, discount: 0, reason });
+
+const approve = (discount: number, reason: string): Decision => ({
+  approved: true,
+  discount,
+  reason,
+});
+
+const evaluatePredicate = (predicate: Predicate, facts: Facts): boolean => {
+  switch (predicate.kind) {
+    case 'lessThan':
+      return facts[predicate.fact] < predicate.value;
+    case 'greaterThan':
+      return facts[predicate.fact] > predicate.value;
+    case 'isTrue':
+      return facts[predicate.fact];
+    case 'not':
+      return !evaluatePredicate(predicate.predicate, facts);
+    case 'and':
+      return predicate.predicates.every((child) => evaluatePredicate(child, facts));
+    default: {
+      const exhaustive: never = predicate;
+      return exhaustive;
+    }
+  }
+};
+
+const rules: readonly Rule[] = [
+  {
+    when: { kind: 'lessThan', fact: 'age', value: 18 },
+    decision: reject('underage'),
+  },
+  {
+    when: {
+      kind: 'and',
+      predicates: [
+        { kind: 'not', predicate: { kind: 'isTrue', fact: 'hasLicense' } },
+        { kind: 'greaterThan', fact: 'purchaseAmount', value: 100 },
+      ],
+    },
+    decision: reject('needs license for large purchase'),
+  },
+  {
+    when: { kind: 'isTrue', fact: 'isPremium' },
+    decision: approve(0.2, 'premium'),
+  },
+  {
+    when: { kind: 'greaterThan', fact: 'purchaseAmount', value: 200 },
+    decision: approve(0.1, 'bulk'),
+  },
+];
+
+const defaultDecision = approve(0.05, 'standard');
+
+export const evaluatePolicy = (facts: Facts): Decision =>
+  rules.find((rule) => evaluatePredicate(rule.when, facts))?.decision ?? defaultDecision;
