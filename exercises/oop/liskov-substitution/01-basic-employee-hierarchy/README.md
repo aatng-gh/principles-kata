@@ -14,7 +14,7 @@ The HR/payroll system has an `Employee` base with `calculatePay(): number` and `
 - "Current" special rules (intern stipend = 0 or low, contractor always low approval) must still be representable, but without breaking the base contract.
 
 ## Starter (what you are given)
-See `src/employeeHierarchy.ts` — base `Employee` plus `Manager`, `Contractor`, `Intern` subclasses. Some overrides intentionally violate substitutability (throwing, always-false for small expenses, pay that can surprise callers using base refs). The tests exercise both direct calls and some polymorphic use.
+The provided implementation in `src/employeeHierarchy.ts` already demonstrates substitutable subtypes: the `Employee` base uses a protected `expenseApprovalLimit` getter and `nonNegative` helper so `approveExpense` never throws and always respects documented limits, while `Manager`/`Contractor`/`Intern` override only to specialize pay computation and approval limits (pay always >= 0). The public contract and polymorphic scenarios are satisfied by construction. Use the Criteria to evaluate fidelity or further refine while keeping the public contract.
 
 ## Criteria (principle-specific success bar — this is what the judge will score)
 - Any subtype can be used via an `Employee` reference (or in an `Employee[]`) and will satisfy the base contract: `calculatePay() >= 0`, `approveExpense(n)` for small n returns true (or the documented behavior), no unexpected exceptions.

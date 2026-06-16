@@ -1,6 +1,4 @@
 // exercises/oop/liskov-substitution/01-basic-employee-hierarchy/src/employeeHierarchy.ts
-// STARTER — subtypes violate substitutability (e.g. Intern throws on approve, pay logic differs in incompatible ways).
-
 export abstract class Employee {
   constructor(
     public readonly id: string,
@@ -10,7 +8,15 @@ export abstract class Employee {
   abstract calculatePay(): number;
 
   approveExpense(amount: number): boolean {
-    return amount < 1000; // default
+    return amount <= this.expenseApprovalLimit;
+  }
+
+  protected get expenseApprovalLimit(): number {
+    return 1000;
+  }
+
+  protected nonNegative(amount: number): number {
+    return Math.max(0, amount);
   }
 }
 
@@ -24,10 +30,11 @@ export class Manager extends Employee {
     super(id, name);
   }
   override calculatePay(): number {
-    return this.base + this.bonus;
+    return this.nonNegative(this.base + this.bonus);
   }
-  override approveExpense(amount: number): boolean {
-    return amount < 10000; // ok, wider
+
+  protected override get expenseApprovalLimit(): number {
+    return 10000;
   }
 }
 
@@ -41,11 +48,11 @@ export class Contractor extends Employee {
     super(id, name);
   }
   override calculatePay(): number {
-    return this.rate * this.hours;
+    return this.nonNegative(this.rate * this.hours);
   }
-  // contractors can't approve? but overrides to false always — may violate caller expectations
-  override approveExpense(_amount: number): boolean {
-    return false;
+
+  protected override get expenseApprovalLimit(): number {
+    return 1000;
   }
 }
 
@@ -58,9 +65,10 @@ export class Intern extends Employee {
     super(id, name);
   }
   override calculatePay(): number {
-    return this.stipend;
+    return this.nonNegative(this.stipend);
   }
-  override approveExpense(_amount: number): boolean {
-    throw new Error('Interns may not approve expenses');
+
+  protected override get expenseApprovalLimit(): number {
+    return 0; // special role: interns have $0 approval authority; still substitutable (returns false for >0, never throws)
   }
 }

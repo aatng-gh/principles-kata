@@ -10,11 +10,10 @@ describe('Employee hierarchy (LSP basic)', () => {
     expect(m.approveExpense(15000)).toBe(false);
   });
 
-  it('contractor pay is hours * rate; currently rejects all expenses (to be made substitutable)', () => {
+  it('contractor pay is hours * rate and remains substitutable for small approvals', () => {
     const c = new Contractor('c1', 'Pat', 75, 40);
     expect(c.calculatePay()).toBe(3000);
-    // current behavior (LSP violation) — test does not require the false for small in the contract
-    expect(c.approveExpense(100)).toBe(false);
+    expect(c.approveExpense(100)).toBe(true);
   });
 
   it('intern pay is stipend (special rule)', () => {
@@ -35,13 +34,16 @@ describe('Employee hierarchy (LSP basic)', () => {
     const total = emps.reduce((sum, e) => sum + e.calculatePay(), 0);
     expect(total).toBe(8500 + 3000 + 2000);
 
-    const canApproveSmall = emps.every((e) => {
+    // Polymorphic use via base: all calls succeed (no exceptions) even though Intern (limit=0) will return false for 200.
+    // This demonstrates special role behavior is observable through the base without weakening contract or forcing instanceof in client.
+    const noExceptions = emps.every((e) => {
       try {
-        return e.approveExpense(200);
+        e.approveExpense(200); // intern returns false here; manager/contractor return true
+        return true;
       } catch {
         return false;
       }
     });
-    expect(canApproveSmall).toBe(false); // because contractor/intern current behavior
+    expect(noExceptions).toBe(true);
   });
 });

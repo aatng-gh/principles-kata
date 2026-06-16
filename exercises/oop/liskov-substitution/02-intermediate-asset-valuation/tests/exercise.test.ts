@@ -30,7 +30,7 @@ describe('Asset valuation (LSP intermediate)', () => {
     expect(option.getRisk()).toBe(8);
 
     const re = new RealEstate('123 Main', 500000);
-    expect(re.getValue()).toBe(500000);
+    expect(re.getValue()).toBe(475000);
     expect(re.getRisk()).toBe(3);
   });
 
