@@ -67,6 +67,20 @@ describe('Generics 02 - withCache (applied dual paradigm)', () => {
     expect(fetchUser).toHaveBeenCalledTimes(1);
   });
 
+  it('preserves generic function relationships', () => {
+    function identity<T>(value: T): T {
+      return value;
+    }
+
+    const cachedIdentity = withCache(identity);
+
+    expectTypeOf(cachedIdentity).toEqualTypeOf<typeof identity>();
+
+    const literal = cachedIdentity({ kind: 'literal' as const });
+    expectTypeOf(literal).toEqualTypeOf<{ kind: 'literal' }>();
+    expect(literal).toEqual({ kind: 'literal' });
+  });
+
   it('handles async functions correctly (type + behavior)', async () => {
     const load = vi.fn(async (url: string): Promise<{ data: string }> => ({ data: url }));
 

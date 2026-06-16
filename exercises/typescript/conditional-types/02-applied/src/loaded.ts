@@ -24,22 +24,38 @@ export type Loaded<T> = T extends Promise<infer U>
       : never
     : T;
 
-// unwrapLoaded drives its return type from Loaded<T>.
-// Callers in both class and pure fn get the inner type with no casts needed at use sites.
-// Runtime is demo (real code awaits or checks .ok before).
+function isResult(value: unknown): value is Result<unknown, unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'ok' in value &&
+    (value.ok === true ? 'value' in value : value.ok === false && 'error' in value)
+  );
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'then' in value &&
+    typeof value.then === 'function'
+  );
+}
+
+// unwrapLoaded drives its return type from Loaded<T>. Runtime supports sync Results
+// and plain values. Promises must be awaited by real code; for the kata's
+// type-only promise call site, this returns an explicit placeholder without `any`.
 export function unwrapLoaded<T>(value: T): Loaded<T> {
-  if (value && typeof value === 'object') {
-    // biome-ignore lint/suspicious/noExplicitAny: demo only, contained; type system already narrowed caller
-    if ('ok' in value && (value as any).ok) {
-      // biome-ignore lint/suspicious/noExplicitAny: demo only, contained; type system already narrowed caller
-      return (value as any).value;
-    }
-    if ('then' in value) {
-      // would await in real; stand-in for type demo
-      // biome-ignore lint/suspicious/noExplicitAny: demo only
-      return undefined as any;
-    }
+  if (isPromiseLike(value)) {
+    return undefined as Loaded<T>;
   }
-  // biome-ignore lint/suspicious/noExplicitAny: identity for non-wrappers, contained in helper
-  return value as any;
+
+  if (isResult(value)) {
+    if (value.ok) {
+      return value.value as Loaded<T>;
+    }
+    throw value.error;
+  }
+
+  return value as Loaded<T>;
 }

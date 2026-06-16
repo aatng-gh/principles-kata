@@ -25,13 +25,12 @@ export type ExtractInner<T> = T extends Promise<infer U>
       ? U
       : T;
 
-// Runtime demo helpers. The bodies are demo-only (you cannot synchronously
-// unwrap a Promise without await). The casts are isolated here with biome-ignore
-// so that callers (in tests or user code) get the precise type with no casts.
+// Runtime demo helpers. A Promise cannot be synchronously unwrapped; this helper keeps
+// the exercise's type-level signature for the kata tests and uses an explicit placeholder
+// without `any`. Real code should `await p`.
 export function unwrapPromise<T>(p: Promise<T>): T {
-  // Type demo only. Real usage: await p
-  // biome-ignore lint/suspicious/noExplicitAny: contained demo stub; callers see precise T
-  return undefined as any;
+  void p;
+  return undefined as T;
 }
 
 export function unwrapResult<T, E>(r: Result<T, E>): T {

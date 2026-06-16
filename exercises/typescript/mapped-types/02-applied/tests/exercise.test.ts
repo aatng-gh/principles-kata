@@ -104,17 +104,18 @@ describe('Mapped 02 (applied - deep readonly updates + mapped updaters)', () => 
     if (ups.setCount) ups.setCount(7);
     expect(state.count).toBe(7);
 
-    // with readonly view (ties to update/deep) -- types accept DeepReadonly, but we avoid invoking demo setters
-    // because the demo impl mutates and the passed object may be frozen by deepFreeze/deepUpdate.
+    // with readonly view (ties to update/deep)
     const roState = deepUpdate(state, {}) as DeepReadonly<AppState>;
     const roUps = createReadonlyUpdaters(roState);
-    expect(roUps).toBeDefined();
-    // (do not call roUps.set* in this demo to avoid "cannot assign to readonly")
+    roUps.setCount?.(11);
+    expect(roUps.getState().count).toBe(11);
+    expect(roState.count).toBe(7);
+    expectTypeOf(roUps.getState()).toEqualTypeOf<DeepReadonly<AppState>>();
 
     // class usage
     class Controller {
       private state: DeepReadonly<AppState>;
-      private ups: Updaters<Public<AppState>>;
+      private ups: ReturnType<typeof createReadonlyUpdaters<AppState>>;
       constructor(init: AppState) {
         this.state = deepUpdate(init, {});
         this.ups = createReadonlyUpdaters(this.state);
@@ -122,10 +123,11 @@ describe('Mapped 02 (applied - deep readonly updates + mapped updaters)', () => 
       inc() {
         const cur = this.state.count;
         this.ups.setCount?.(cur + 1);
+        this.state = this.ups.getState();
       }
     }
     const ctrl = new Controller({ ...state, count: 10, _internalCache: new Map() });
-    // construction exercises readonly+updaters wiring; skip .inc() as demo updaters mutate and state is frozen
+    ctrl.inc();
     expect(ctrl).toBeDefined();
 
     // pure fn usage

@@ -2,9 +2,11 @@
 // Uses mapped + key remapping (`as`) + template literal types for Public + Updaters.
 // Public<T> drops private (underscore) members via never in key remap.
 // Updaters<T> produces optional setX methods (using Capitalize) for each public key.
-// The factory wires demo setters (may mutate target for simplicity of demo; real would be immutable via deepUpdate).
+// The mutable factory wires demo setters for mutable targets. The readonly factory
+// preserves readonly inputs by keeping an internal immutable snapshot updated via deepUpdate.
 
 import type { DeepReadonly } from '../../01-core/src/deep';
+import { type DeepPartial, deepUpdate } from './update';
 
 export interface AppState {
   user: { id: number; name: string };
@@ -20,29 +22,42 @@ export type Updaters<T> = {
   [K in keyof T as `set${Capitalize<string & K>}`]?: (value: T[K]) => void;
 };
 
-export function createUpdaters<T extends object>(target: T): Updaters<Public<T>> {
-  const updaters = {} as Updaters<Public<T>>;
+export type ReadonlyUpdaters<S extends object> = Updaters<Public<S>> & {
+  getState(): DeepReadonly<S>;
+};
 
-  const pub = target as Public<T>;
-  for (const k of Object.keys(pub) as Array<keyof Public<T>>) {
-    const setterName =
-      `set${String(k).charAt(0).toUpperCase()}${String(k).slice(1)}` as keyof Updaters<Public<T>>;
-    // biome-ignore lint/suspicious/noExplicitAny: demo wiring of dynamic keys; real immutable version would delegate to deepUpdate
-    (updaters as any)[setterName] = (value: unknown) => {
-      // demo: mutate the target (in real immutable version would return new via deepUpdate + assign back)
-      // biome-ignore lint/suspicious/noExplicitAny: demo
-      (target as any)[k as string] = value;
+function setterNameFor(key: string): string {
+  return `set${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+}
+
+export function createUpdaters<T extends object>(target: T): Updaters<Public<T>> {
+  const updaters: Record<string, (value: unknown) => void> = {};
+  const writableTarget = target as Record<string, unknown>;
+
+  for (const key of Object.keys(target).filter((k) => !k.startsWith('_'))) {
+    updaters[setterNameFor(key)] = (value: unknown) => {
+      writableTarget[key] = value;
     };
   }
 
-  return updaters;
+  return updaters as Updaters<Public<T>>;
 }
 
 // Example of tying mappedStore updaters to deep readonly views (for dual use demo).
 export function createReadonlyUpdaters<S extends object>(
   target: DeepReadonly<S>
-): Updaters<Public<S>> {
-  // In real, the updaters would produce new readonly via deepUpdate rather than mutate.
-  // Here we accept readonly view for the "state" param to show type flow.
-  return createUpdaters(target as S); // cast for demo wiring only
+): ReadonlyUpdaters<S> {
+  const updaters: Record<string, (value: unknown) => void> = {};
+  let current = target;
+
+  for (const key of Object.keys(target).filter((k) => !k.startsWith('_'))) {
+    updaters[setterNameFor(key)] = (value: unknown) => {
+      current = deepUpdate(current, { [key]: value } as DeepPartial<S>);
+    };
+  }
+
+  return {
+    ...updaters,
+    getState: () => current,
+  } as ReadonlyUpdaters<S>;
 }

@@ -37,36 +37,43 @@ export type Mutable<T> = T extends (args: readonly unknown[]) => unknown
         : T;
 
 export function deepFreeze<T>(obj: T): DeepReadonly<T> {
-  if (obj == null || typeof obj !== 'object') {
-    return obj as DeepReadonly<T>;
+  freezeInPlace(obj);
+  // Single documented cast: we performed in-place deep freeze (side-effect only walk below);
+  // the runtime value is now deeply readonly, so we claim the DeepReadonly<T> view.
+  // No recursive generic lying casts (e.g. no `as unknown as T`) remain.
+  return obj as DeepReadonly<T>;
+}
+
+/** Side-effect only deep freeze walk. Uses unknown to avoid generic recast hacks in recursion. */
+function freezeInPlace(value: unknown): void {
+  if (value == null || typeof value !== 'object') {
+    return;
   }
 
-  // Terminal objects: freeze but do not recurse (preserve their type, e.g. Date stays Date)
+  // Terminal objects: freeze but do not recurse
   if (
-    obj instanceof Date ||
-    obj instanceof RegExp ||
-    obj instanceof Map ||
-    obj instanceof Set ||
-    typeof obj === 'function'
+    value instanceof Date ||
+    value instanceof RegExp ||
+    value instanceof Map ||
+    value instanceof Set ||
+    typeof value === 'function'
   ) {
-    Object.freeze(obj);
-    return obj as DeepReadonly<T>;
+    Object.freeze(value);
+    return;
   }
 
-  if (Array.isArray(obj)) {
-    for (let i = 0; i < obj.length; i++) {
-      // recurse to freeze elements (using unknown cast only internally)
-      deepFreeze(obj[i] as unknown as T); // T here is element but cast for generic
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      freezeInPlace(value[i]); // unknown element, no cast to outer T
     }
-    Object.freeze(obj);
-    return obj as DeepReadonly<T>;
+    Object.freeze(value);
+    return;
   }
 
   // plain object
-  const rec = obj as Record<string, unknown>;
+  const rec = value as Record<string, unknown>; // internal for keys iteration only
   for (const key of Object.keys(rec)) {
-    deepFreeze(rec[key] as T);
+    freezeInPlace(rec[key]);
   }
-  Object.freeze(obj);
-  return obj as DeepReadonly<T>;
+  Object.freeze(value);
 }

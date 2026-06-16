@@ -28,7 +28,7 @@ The goal is excellent inference and type safety:
 - It must be usable both as a fluent OOP-style builder *and* inside pure functions (no mutation of external state in the "core" logic).
 
 ## Starter
-See `src/builder.ts`. The skeleton has loose types (`any` or `object`) on purpose.
+The provided implementation in `src/builder.ts` already demonstrates precise generic mechanics: `createBuilder<Shape extends object>()` with `K extends keyof Shape` constraints on `set`, `SetKeys` tracking for result typing, conditional `BuildResult<Shape, SetKeys>` (no `any` in public signatures or core impl), enabling safe fluent use from both class methods and pure function pipelines. The public API and test contract (incl. type assertions) are as specified. Use the Criteria to evaluate fidelity or further refine while keeping the public contract.
 
 ## Criteria
 - The public API of the builder must be fully generic and infer `Shape` from usage (or from an initial call).

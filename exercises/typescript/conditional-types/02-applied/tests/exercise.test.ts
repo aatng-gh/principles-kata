@@ -29,6 +29,9 @@ describe('Conditional Types 02 - Loaded<T> (applied, dual paradigm)', () => {
     >;
     const u3 = unwrapLoaded(promRes);
     expectTypeOf(u3).toEqualTypeOf<number>();
+
+    const failed: Result<number, Error> = { ok: false, error: new Error('nope') };
+    expect(() => unwrapLoaded(failed)).toThrow('nope');
   });
 
   it('supports mixed usage: class service method + pure pipeline (types + runtime)', () => {

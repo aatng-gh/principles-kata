@@ -33,7 +33,8 @@ export function isAdmin(p: unknown): p is Admin {
     'name' in p &&
     typeof p.name === 'string' &&
     'permissions' in p &&
-    Array.isArray(p.permissions)
+    Array.isArray(p.permissions) &&
+    p.permissions.every((permission) => typeof permission === 'string')
   );
 }
 

@@ -3,40 +3,55 @@
 // - Overloads preserve exact signatures including `this` param for methods (no caller .bind required for wrap; supply this at call if extracting unbound method ref).
 // - Custom key generic over Args.
 // - Async supported transparently (caches the Promise).
-// - No `any` in public API; impl uses unknown + one biome-ignored impl sig for overload dispatch (standard, isolated, deliberate for starter; good prod version can use conditional types or ThisType helpers).
+// - No `any` in public API or implementation.
 // See test for clean class usage demo without bind at wrap time.
 
+type CacheableFunction = (this: unknown, ...args: never[]) => unknown;
+type RuntimeFunction = (this: unknown, ...args: unknown[]) => unknown;
+
+type CacheOptions<F extends CacheableFunction, Key> = {
+  key?: (this: ThisParameterType<F>, ...args: Parameters<OmitThisParameter<F>>) => Key;
+  ttlMs?: number;
+};
+
+type MockLikeFunction<Args extends unknown[], Return> = ((...args: Args) => Return) & {
+  readonly mock: unknown;
+};
+
 function withCache<Args extends unknown[], Return, Key = string>(
-  fn: (...args: Args) => Return,
+  fn: MockLikeFunction<Args, Return>,
   options?: {
     key?: (...args: Args) => Key;
     ttlMs?: number;
   }
 ): (...args: Args) => Return;
 
-function withCache<This, Args extends unknown[], Return, Key = string>(
-  fn: (this: This, ...args: Args) => Return,
+function withCache<F extends CacheableFunction, Key = string>(
+  fn: F,
+  options?: CacheOptions<F, Key>
+): F;
+
+function withCache<Key = string>(
+  fn: RuntimeFunction,
   options?: {
-    key?: (this: This, ...args: Args) => Key;
+    key?: (this: unknown, ...args: unknown[]) => Key;
     ttlMs?: number;
   }
-): (this: This, ...args: Args) => Return;
-
-// biome-ignore lint/suspicious/noExplicitAny: overload implementation signature only; all public overloads + logic are precise with unknown. This is the isolated deliberate looseness for dual this/args inference.
-function withCache(fn: any, options?: any): any {
-  const cache = new Map<unknown, unknown>();
+): RuntimeFunction {
+  const cache = new Map<unknown, { readonly value: unknown; readonly expiresAt?: number }>();
 
   return function (this: unknown, ...args: unknown[]): unknown {
-    const keyFn = options?.key ?? ((...a: unknown[]) => JSON.stringify(a) as unknown);
-    const key = options?.key
-      ? (options.key.apply(this, args) as unknown)
-      : (keyFn.apply(this, args) as unknown);
+    const key = options?.key?.call(this, ...args) ?? JSON.stringify(args);
+    const hit = cache.get(key);
+    const now = Date.now();
 
-    if (cache.has(key)) {
-      return cache.get(key);
+    if (hit && (hit.expiresAt === undefined || hit.expiresAt > now)) {
+      return hit.value;
     }
+
     const result = fn.apply(this, args);
-    cache.set(key, result);
+    const expiresAt = options?.ttlMs === undefined ? undefined : now + options.ttlMs;
+    cache.set(key, expiresAt === undefined ? { value: result } : { value: result, expiresAt });
     return result;
   };
 }

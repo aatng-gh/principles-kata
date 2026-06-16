@@ -170,7 +170,9 @@ See AGENTS.md for the judge standards. New exercises should follow the exact tem
 
 ## Verification of This Lab Itself
 
-VERIFICATION.md (and EXERCISES.md) document the final clean state (32 tests, 28/4 pass/fail files with only intentional FP purity fails, typecheck 0, lint 0, 24 biome-ignores), verification steps, and how the AGENTS.md judge catches principle violations (even when functionality tests pass on deliberately imperfect starters, or "green" numbers with bad design). Cross-reference AGENTS.md for the full rubrics.
+VERIFICATION.md (and EXERCISES.md) document the final clean state (32/118 green, ~14 biome ignores, typecheck 0, lint 0), verification steps, and how the AGENTS.md judge catches principle violations (even when functionality tests are green). Cross-reference AGENTS.md for the full rubrics.
+
+**Note on provided implementations**: In many exercises the `src/` starter already contains a correct structural skeleton (thin orchestrator + injected ports, pure named stages, precise generics, substitutable subtypes, etc.) that satisfies the public contract. The Criteria + AGENTS.md rubrics exist to evaluate *principle fidelity* of what is present (and guide any refinement); the task is comprehension and design review, not starting from a completely broken file. Always follow the "implement / self-check / AGENTS review / reveal" flow.
 
 ## License
 

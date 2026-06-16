@@ -27,6 +27,7 @@ describe('Type Guards 01 (core)', () => {
     }
     expect(isUser(adminP)).toBe(false);
     expect(isUser(userP)).toBe(true);
+    expect(isAdmin({ type: 'admin', name: 'bad', permissions: ['read', 1] })).toBe(false);
   });
 
   it('assertion function throws on bad data', () => {

@@ -14,16 +14,19 @@ export interface KeyEvent {
 
 export type AppEvent = MouseEvent | KeyEvent;
 
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === 'object' && x !== null;
+}
+
 export function isAppEvent(x: unknown): x is AppEvent {
-  if (typeof x !== 'object' || x === null) {
+  if (!isRecord(x)) {
     return false;
   }
-  const rec = x as Record<string, unknown>;
-  if (rec.type === 'mouse') {
-    return typeof rec.x === 'number' && typeof rec.y === 'number';
+  if (x.type === 'mouse') {
+    return typeof x.x === 'number' && typeof x.y === 'number';
   }
-  if (rec.type === 'key') {
-    return typeof rec.key === 'string';
+  if (x.type === 'key') {
+    return typeof x.key === 'string';
   }
   return false;
 }
@@ -34,11 +37,10 @@ export interface User {
 }
 
 export function isUser(x: unknown): x is User {
-  if (typeof x !== 'object' || x === null) {
+  if (!isRecord(x)) {
     return false;
   }
-  const rec = x as Record<string, unknown>;
-  return typeof rec.id === 'string' && typeof rec.name === 'string';
+  return typeof x.id === 'string' && typeof x.name === 'string';
 }
 
 export class EventProcessor {
