@@ -1,6 +1,15 @@
 // exercises/oop/dependency-inversion/01-basic-notification-service/src/notificationService.ts
-// THIS IS THE STARTER — high-level OrderProcessor directly news low-level concretions.
-// Delivers the notifications + logs so tests pass, but violates DIP.
+// DIP: ports (interfaces) + high-level policy (OrderProcessor) only in this file.
+// Concrete adapters extracted to emailSender.ts / smsSender.ts / fileLogger.ts.
+// createDefault wires them; OrderProcessor source mentions only the port names.
+
+import { EmailSender } from './emailSender';
+import { FileLogger } from './fileLogger';
+import { SmsSender } from './smsSender';
+
+export { EmailSender } from './emailSender';
+export { SmsSender } from './smsSender';
+export { FileLogger } from './fileLogger';
 
 export interface Order {
   id: string;
@@ -10,50 +19,48 @@ export interface Order {
   total: number;
 }
 
-export class EmailSender {
-  async send(to: string, subject: string, body: string): Promise<void> {
-    console.log(`[EMAIL] to=${to} subject="${subject}" body="${body}"`);
-  }
+export interface EmailNotifier {
+  sendOrderConfirmation(order: Order): Promise<void>;
 }
 
-export class SmsSender {
-  async send(phone: string, message: string): Promise<void> {
-    console.log(`[SMS] to=${phone} msg="${message}"`);
-  }
+export interface SmsNotifier {
+  sendOrderConfirmation(order: Order): Promise<void>;
 }
 
-export class FileLogger {
-  private entries: string[] = [];
-  log(message: string): void {
-    const entry = `[LOG ${new Date().toISOString()}] ${message}`;
-    this.entries.push(entry);
-    console.log(entry);
-  }
-  getEntries() {
-    return [...this.entries];
-  }
+export interface AuditLogger {
+  logOrderProcessed(order: Order): void;
+}
+
+export interface OrderProcessorDependencies {
+  readonly emailNotifier: EmailNotifier;
+  readonly smsNotifier: SmsNotifier;
+  readonly auditLogger: AuditLogger;
+}
+
+export function createDefaultOrderProcessorDependencies(): OrderProcessorDependencies {
+  return {
+    emailNotifier: new EmailSender(),
+    smsNotifier: new SmsSender(),
+    auditLogger: new FileLogger(),
+  };
 }
 
 export class OrderProcessor {
+  private readonly emailNotifier: EmailNotifier;
+  private readonly smsNotifier: SmsNotifier;
+  private readonly auditLogger: AuditLogger;
+
+  constructor(
+    dependencies: OrderProcessorDependencies = createDefaultOrderProcessorDependencies()
+  ) {
+    this.emailNotifier = dependencies.emailNotifier;
+    this.smsNotifier = dependencies.smsNotifier;
+    this.auditLogger = dependencies.auditLogger;
+  }
+
   async process(order: Order): Promise<void> {
-    // high level directly depending on + newing low level details (bad)
-    const emailer = new EmailSender();
-    const sms = new SmsSender();
-    const logger = new FileLogger();
-
-    const subject = `Order ${order.id} confirmed`;
-    const body = `Thank you. Total: ${order.total}. Items: ${order.items.join(', ')}`;
-    await emailer.send(order.customerEmail, subject, body);
-
-    if (order.customerPhone) {
-      await sms.send(
-        order.customerPhone,
-        `Your order ${order.id} total ${order.total} is confirmed.`
-      );
-    }
-
-    logger.log(`order_processed ${order.id} total=${order.total} customer=${order.customerEmail}`);
-
-    // in real would also persist order etc., but for this exercise the notifications are the observable
+    await this.emailNotifier.sendOrderConfirmation(order);
+    await this.smsNotifier.sendOrderConfirmation(order);
+    this.auditLogger.logOrderProcessed(order);
   }
 }

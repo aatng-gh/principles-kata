@@ -13,7 +13,7 @@ The order fulfillment workflow must: load the order, check inventory, charge the
 - The same policy code must be usable in production with real adapters (the exercise only ships in-memory/fake ones + the ports).
 
 ## Starter (what you are given)
-See `src/orderFulfillment.ts` — `FulfillmentService` (or `OrderFulfillment`) that `new`s the four low-level concretions (repo, payment, inventory, and uses Date directly) inside `fulfill(orderId)`. The concrete adapters are simple in-memory or stub implementations. The test drives happy-path and a couple failure cases and observes the side effects (stock levels, order status, "charges" recorded, audit entries).
+See `src/orderFulfillment.ts` (thin FulfillmentService policy) + `ports.ts` (Order + the 4 port interfaces + FulfillmentPorts) + `wiring.ts` (createDefaultFulfillmentPorts only) with the 4 concrete adapters in their own files (`inMemoryOrderRepository.ts` etc.). The policy depends only on port names; no `new` or Date inside the policy. Wiring is the only place concretes are assembled. Test drives the flows. Refine per Criteria.
 
 ## Criteria (principle-specific success bar — this is what the judge will score)
 - The fulfillment policy / use case depends only on the four ports (e.g. `OrderRepository`, `PaymentGateway`, `Inventory`, `Clock`).

@@ -14,7 +14,7 @@ An `OrderProcessor` is the high-level orchestrator for order confirmation. It cu
 - Swapping the email implementation (e.g. from console to a real mailer, or adding a second channel) must not require changes to `OrderProcessor`.
 
 ## Starter (what you are given)
-See `src/notificationService.ts` — `OrderProcessor` that directly constructs `EmailSender`, `SmsSender`, and `FileLogger` (simple classes that log to console or accumulate). The test exercises `process` and observes the side effects via spies or inspection helpers.
+See `src/notificationService.ts` (ports/interfaces + OrderProcessor policy + createDefault wiring) with concrete adapters extracted to `emailSender.ts`, `smsSender.ts`, `fileLogger.ts`. `OrderProcessor` depends only on the port names; defaults import and supply the concretes. Test exercises `process` and observes side effects via spies. Refine per Criteria.
 
 ## Criteria (principle-specific success bar — this is what the judge will score)
 - `OrderProcessor` depends only on abstractions (`INotifier`, `ILogger` or similar) — it never imports or `new`s a concrete sender or logger.
