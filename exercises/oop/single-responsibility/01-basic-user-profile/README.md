@@ -14,7 +14,7 @@ You are building the profile registration flow for a small SaaS. The initial `Us
 - "Email" and "audit" are simulated via injected or provided ports that just record calls.
 
 ## Starter (what you are given)
-See `src/userProfileService.ts` — a single service that mixes validation, persistence, email, and logging. The test file is already written against the public API.
+The provided implementation in `src/` already demonstrates separated concerns via a thin `UserProfileService` orchestrator depending only on injected ports (`UserValidator`, `UserProfileFactory`, `UserRepository`, `EmailNotifier`, `AuditLogger`), with dedicated modules for each concern and a `createDefaultUserProfileDependencies` helper for wiring. The public `register` contract and test expectations are unchanged. Use the Criteria to evaluate fidelity or further refine while keeping the public contract.
 
 ## Criteria (principle-specific success bar — this is what the judge will score)
 - After your changes, **no module has more than one reason to change**.
