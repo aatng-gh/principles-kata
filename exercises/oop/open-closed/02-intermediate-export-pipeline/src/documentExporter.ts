@@ -1,52 +1,90 @@
 // exercises/oop/open-closed/02-intermediate-export-pipeline/src/documentExporter.ts
-// STARTER — switch on format (plus duplicated watermark logic inside cases), closed to new formats only in name.
-// This is the "bad" starting point demonstrating the OCP violation.
+// Thin closed core per Open/Closed Principle.
+// Registry + delegation only. Format-specific logic and watermark cross-cut live in
+// dedicated modules (pdfExporter.ts etc). Core never changes for new formats/behaviors.
 
-export interface ReportRow {
-  readonly [key: string]: string | number;
+import { CsvExporter } from './csvExporter';
+import { JsonExporter } from './jsonExporter';
+import { PdfExporter } from './pdfExporter';
+import type {
+  DocumentFormatExporter,
+  ExportFormat,
+  ExportOptions,
+  ReportData,
+  ReportRow,
+  WatermarkFormatter,
+} from './types';
+import {
+  CsvWatermarkFormatter,
+  JsonWatermarkFormatter,
+  PdfWatermarkFormatter,
+  WatermarkingExporter,
+} from './watermarkingExporter';
+
+// Re-exports so existing imports (e.g. tests, consumers) continue to work unchanged.
+export type { ExportFormat, ReportData } from './types';
+export type { DocumentFormatExporter, ExportOptions, ReportRow } from './types';
+export type { WatermarkFormatter } from './types';
+
+// Re-export concretes for registration / extension use.
+export { PdfExporter } from './pdfExporter';
+export { CsvExporter } from './csvExporter';
+export { JsonExporter } from './jsonExporter';
+export {
+  PdfWatermarkFormatter,
+  CsvWatermarkFormatter,
+  JsonWatermarkFormatter,
+  WatermarkingExporter,
+} from './watermarkingExporter';
+
+/**
+ * Adding a 4th format e.g. HtmlExporter: create new file implementing DocumentFormatExporter,
+ * import and register(new HtmlExporter()) here; zero edits to existing exporters or this core logic.
+ */
+
+export function createDefaultFormatExporters(): DocumentFormatExporter[] {
+  return [new PdfExporter(), new CsvExporter(), new JsonExporter()];
 }
 
-export interface ReportData {
-  readonly title: string;
-  readonly rows: readonly ReportRow[];
+export function createDefaultWatermarkFormatters(): WatermarkFormatter[] {
+  return [new PdfWatermarkFormatter(), new CsvWatermarkFormatter(), new JsonWatermarkFormatter()];
 }
-
-export interface ExportOptions {
-  readonly watermark?: boolean;
-}
-
-export type ExportFormat = 'pdf' | 'csv' | 'json';
 
 export class DocumentExporter {
-  exportReport(data: ReportData, format: ExportFormat, options: ExportOptions = {}): string {
-    const { watermark = false } = options;
-    const marker = watermark ? ' [WATERMARKED]' : '';
-    switch (format) {
-      case 'pdf': {
-        let out = `[PDF] ${data.title} (${data.rows.length} rows)${marker}`;
-        if (watermark) out += '\n-- CONFIDENTIAL --';
-        return out;
-      }
-      case 'csv': {
-        if (data.rows.length === 0) {
-          return data.title + marker;
-        }
-        // biome-ignore lint/style/noNonNullAssertion: starter code; length guard + real impls (see ref) use better patterns or separate empty handling
-        const first = data.rows[0]!;
-        const headers = Object.keys(first).join(',');
-        const lines = data.rows.map((r) => Object.values(r).join(',')).join('\n');
-        return `${data.title}${marker}\n${headers}\n${lines}`;
-      }
-      case 'json': {
-        const payload: Record<string, unknown> = {
-          title: data.title,
-          rows: data.rows,
-        };
-        if (watermark) payload.watermark = true;
-        return JSON.stringify(payload);
-      }
-      default:
-        throw new Error(`Unsupported format: ${format}`);
+  private readonly exporters = new Map<ExportFormat, DocumentFormatExporter>();
+  private readonly watermarkFormatters = new Map<ExportFormat, WatermarkFormatter>();
+
+  constructor(
+    exporters: readonly DocumentFormatExporter[] = createDefaultFormatExporters(),
+    watermarkFormatters: readonly WatermarkFormatter[] = createDefaultWatermarkFormatters()
+  ) {
+    for (const exporter of exporters) {
+      this.register(exporter);
     }
+    for (const watermarkFormatter of watermarkFormatters) {
+      this.registerWatermarkFormatter(watermarkFormatter);
+    }
+  }
+
+  register(exporter: DocumentFormatExporter): void {
+    this.exporters.set(exporter.format, exporter);
+  }
+
+  registerWatermarkFormatter(watermarkFormatter: WatermarkFormatter): void {
+    this.watermarkFormatters.set(watermarkFormatter.format, watermarkFormatter);
+  }
+
+  exportReport(data: ReportData, format: ExportFormat, options: ExportOptions = {}): string {
+    const exporter = this.exporters.get(format);
+    if (!exporter) {
+      throw new Error(`Unsupported format: ${format}`);
+    }
+
+    const watermarkFormatter = this.watermarkFormatters.get(format);
+    const selected =
+      options.watermark && watermarkFormatter
+        ? new WatermarkingExporter(exporter, watermarkFormatter)
+        : exporter;
+    return selected.export(data);
   }
 }

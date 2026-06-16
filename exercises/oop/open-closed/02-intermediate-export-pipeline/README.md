@@ -16,7 +16,7 @@ A reporting module must export documents in multiple formats for different consu
 - The exporter must remain stable: adding support for a brand new format must not require changing any code that implements the existing three formats.
 
 ## Starter (what you are given)
-See `src/documentExporter.ts` — a single class (`DocumentExporter`) containing a switch (or if/else ladder) on format string with duplicated or case-by-case logic for PDF/CSV/JSON plus watermark handling inside the cases. The test is written against the public export API (exportReport with optional options for watermark).
+The provided implementation demonstrates OCP: `PdfExporter`, `CsvExporter`, `JsonExporter` (and matching `*WatermarkFormatter`) each live in dedicated modules implementing the small abstractions; `WatermarkingExporter` provides the cross-cut via composition; `DocumentExporter` (thin closed core in `documentExporter.ts`) owns only registration + lookup + delegation (no format-specific strings or logic in the export path). Adding a 4th format or 2nd behavior requires only a new file + one registration line. The public `exportReport` contract is unchanged. Use the Criteria to evaluate fidelity or further refine while keeping the public contract.
 
 ## Criteria (principle-specific success bar — this is what the judge will score)
 - Adding a new format (e.g. 'html' or 'xml') is done by writing a new exporter implementation and registering it (or subclassing) — **zero edits** to the original switch or the three existing format cases.

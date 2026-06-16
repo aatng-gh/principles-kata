@@ -13,7 +13,7 @@ A discount engine for checkout started simple but grew if/else chains for custom
 - The public API must stay stable.
 
 ## Starter (what you are given)
-See `src/discountEngine.ts` — a single class with if/else for every tier and promo. Test exercises the current behaviors.
+See `src/discountEngine.ts` (engine + registration + defaults) with concrete rules extracted to `tierDiscountRule.ts` and `promoDiscountRule.ts`. The provided uses `DiscountRule` strategy + list in engine (no if/else on tier/promo strings in calc). Test exercises the current behaviors. Refine further per Criteria.
 
 ## Criteria (principle-specific success bar — this is what the judge will score)
 - Adding a new customer tier (e.g. "senior" at 12%) or new promo requires **only adding code** (new class/rule, registration), **never editing** the existing discount logic or the engine's if/else.
