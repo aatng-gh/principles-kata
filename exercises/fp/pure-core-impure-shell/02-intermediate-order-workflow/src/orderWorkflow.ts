@@ -1,46 +1,95 @@
 // exercises/fp/pure-core-impure-shell/02-intermediate-order-workflow/src/orderWorkflow.ts
-// STARTER — everything in one async fn: DB read, decision, DB write, email, payment try/catch.
-// Mixed pure decision with effects; hard to test decisions without real DB.
-
 import { type Result, err, ok } from '../../../lib/result';
 
 export interface Order {
-  id: string;
-  userId: string;
-  total: number;
-  status: string;
+  readonly id: string;
+  readonly userId: string;
+  readonly total: number;
+  readonly status: string;
 }
 
 export interface ProcessResult {
-  ok: boolean;
-  message: string;
+  readonly ok: boolean;
+  readonly message: string;
+}
+
+type OrderStatus = 'approved' | 'rejected' | 'payment-failed';
+
+type Command =
+  | { readonly kind: 'Charge'; readonly amount: number }
+  | { readonly kind: 'UpdateOrder'; readonly orderId: string; readonly status: OrderStatus }
+  | { readonly kind: 'SendEmail'; readonly message: string };
+
+interface Decision {
+  readonly result: ProcessResult;
+  readonly commands: readonly Command[];
+}
+
+export function decideOrder(order: Order): Result<Decision, string> {
+  if (order.status !== 'pending' || order.total > 10000) {
+    return ok({
+      result: { ok: false, message: 'rejected' },
+      commands: [
+        { kind: 'UpdateOrder', orderId: order.id, status: 'rejected' },
+        { kind: 'SendEmail', message: `Order ${order.id} rejected` },
+      ],
+    });
+  }
+
+  if (order.total < 0) {
+    return err('invalid total');
+  }
+
+  return ok({
+    result: { ok: true, message: 'approved' },
+    commands: [
+      { kind: 'Charge', amount: order.total },
+      { kind: 'UpdateOrder', orderId: order.id, status: 'approved' },
+      { kind: 'SendEmail', message: `Order ${order.id} approved and charged` },
+    ],
+  });
 }
 
 export async function processOrder(orderId: string): Promise<ProcessResult> {
-  // effect: load
   const order = await fakeDbGet(orderId);
   if (!order) return { ok: false, message: 'not found' };
 
-  // "decision" mixed in
-  if (order.status !== 'pending' || order.total > 10000) {
-    await fakeDbUpdate(orderId, { status: 'rejected' });
-    await fakeEmail(`Order ${orderId} rejected`);
-    return { ok: false, message: 'rejected' };
+  const decision = decideOrder(order);
+  if (!decision.ok) {
+    return { ok: false, message: decision.error };
   }
 
-  // more effect
   try {
-    await fakePayment(order.total);
-    await fakeDbUpdate(orderId, { status: 'approved' });
-    await fakeEmail(`Order ${orderId} approved and charged`);
-    return { ok: true, message: 'approved' };
-  } catch (e) {
+    await executeCommands(decision.value.commands);
+    return decision.value.result;
+  } catch {
     await fakeDbUpdate(orderId, { status: 'payment-failed' });
     return { ok: false, message: 'payment failed' };
   }
 }
 
-// fakes
+async function executeCommands(commands: readonly Command[]): Promise<void> {
+  await commands.reduce<Promise<void>>(async (previous, command) => {
+    await previous;
+    return executeCommand(command);
+  }, Promise.resolve());
+}
+
+async function executeCommand(command: Command): Promise<void> {
+  switch (command.kind) {
+    case 'Charge':
+      return fakePayment(command.amount);
+    case 'UpdateOrder':
+      return fakeDbUpdate(command.orderId, { status: command.status });
+    case 'SendEmail':
+      return fakeEmail(command.message);
+    default: {
+      const exhaustive: never = command;
+      return exhaustive;
+    }
+  }
+}
+
 async function fakeDbGet(id: string): Promise<Order | null> {
   console.log('[DB] get', id);
   return { id, userId: 'u1', total: 42, status: 'pending' };
