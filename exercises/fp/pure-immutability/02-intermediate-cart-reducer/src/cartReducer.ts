@@ -1,17 +1,14 @@
 // exercises/fp/pure-immutability/02-intermediate-cart-reducer/src/cartReducer.ts
-// STARTER — deliberately imperative, mutating, with hidden side effects.
-// Tempting "obvious" way: just update the object you were given.
-
 export interface CartItem {
-  sku: string;
-  qty: number;
-  unitPrice: number;
+  readonly sku: string;
+  readonly qty: number;
+  readonly unitPrice: number;
 }
 
 export interface Cart {
-  id: string;
-  items: CartItem[];
-  couponCode?: string;
+  readonly id: string;
+  readonly items: readonly CartItem[];
+  readonly couponCode?: string;
 }
 
 export function createEmptyCart(id: string): Cart {
@@ -19,42 +16,42 @@ export function createEmptyCart(id: string): Cart {
 }
 
 export function addItem(cart: Cart, sku: string, qty: number, unitPrice: number): Cart {
-  // side-effecty "lookup" even when price provided (force explicitness)
-  console.log(`[CART-IMPURE] price lookup for ${sku}`);
+  const hasItem = cart.items.some((item) => item.sku === sku);
+  const items = hasItem
+    ? cart.items.map((item) => (item.sku === sku ? { ...item, qty: item.qty + qty } : { ...item }))
+    : [...cart.items.map((item) => ({ ...item })), { sku, qty, unitPrice }];
 
-  const existing = cart.items.find((i) => i.sku === sku);
-  if (existing) {
-    existing.qty += qty; // mutates nested object from input
-  } else {
-    cart.items.push({ sku, qty, unitPrice }); // mutates input array
-  }
-  return cart; // often returns the input reference!
+  return { ...cart, items };
 }
 
 export function setQuantity(cart: Cart, sku: string, qty: number): Cart {
-  const item = cart.items.find((i) => i.sku === sku);
-  if (item && qty > 0) {
-    item.qty = qty; // mutation
-  }
-  return cart;
+  const items =
+    qty > 0
+      ? cart.items.map((item) => (item.sku === sku ? { ...item, qty } : { ...item }))
+      : cart.items.map((item) => ({ ...item }));
+
+  return { ...cart, items };
 }
 
 export function removeItem(cart: Cart, sku: string): Cart {
-  cart.items = cart.items.filter((i) => i.sku !== sku); // rebind but still mutates the cart's items prop
-  return cart;
+  return {
+    ...cart,
+    items: cart.items.filter((item) => item.sku !== sku).map((item) => ({ ...item })),
+  };
 }
 
 export function applyCoupon(cart: Cart, code: string): Cart {
-  cart.couponCode = code; // direct mutation
-  return cart;
+  return {
+    ...cart,
+    items: cart.items.map((item) => ({ ...item })),
+    couponCode: code,
+  };
 }
 
 export function getTotal(cart: Cart): number {
-  let subtotal = cart.items.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
-  if (cart.couponCode === 'SAVE10') {
-    subtotal *= 0.9;
-  } else if (cart.couponCode === 'HALF') {
-    subtotal *= 0.5;
-  }
-  return Math.round(subtotal * 100) / 100;
+  const subtotal = cart.items.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
+  const discountMultiplier =
+    cart.couponCode === 'SAVE10' ? 0.9 : cart.couponCode === 'HALF' ? 0.5 : 1;
+
+  return Math.round(subtotal * discountMultiplier * 100) / 100;
 }

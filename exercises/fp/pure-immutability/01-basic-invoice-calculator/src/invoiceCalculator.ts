@@ -1,67 +1,54 @@
 // exercises/fp/pure-immutability/01-basic-invoice-calculator/src/invoiceCalculator.ts
-// STARTER — deliberately imperative and impure.
-
 export interface CartItem {
-  sku: string;
-  unitPrice: number;
-  qty: number;
-  discount?: number;
+  readonly sku: string;
+  readonly unitPrice: number;
+  readonly qty: number;
+  readonly discount?: number;
 }
 
 export interface Cart {
-  id: string;
-  items: CartItem[];
-  customerId?: string;
+  readonly id: string;
+  readonly items: readonly CartItem[];
+  readonly customerId?: string;
 }
 
 export interface InvoiceLine {
-  sku: string;
-  qty: number;
-  unitPrice: number;
-  lineTotal: number;
+  readonly sku: string;
+  readonly qty: number;
+  readonly unitPrice: number;
+  readonly lineTotal: number;
 }
 
 export interface Invoice {
-  id: string;
-  cartId: string;
-  lines: InvoiceLine[];
-  subtotal: number;
-  tax: number;
-  total: number;
-  createdAt: Date;
+  readonly id: string;
+  readonly cartId: string;
+  readonly lines: readonly InvoiceLine[];
+  readonly subtotal: number;
+  readonly tax: number;
+  readonly total: number;
+  readonly createdAt: Date;
 }
 
-/**
- * STARTER SIGNATURE (impure).
- * Learner must change to accept explicit now and stop mutating.
- */
-export function calculateInvoice(cart: Cart, taxRate = 0.1, now: Date = new Date()): Invoice {
-  // MUTATES INPUT on purpose (bad)
-  let subtotal = 0;
+const roundCurrency = (amount: number): number => Math.round(amount * 100) / 100;
 
-  const lines: InvoiceLine[] = [];
-  for (const item of cart.items) {
-    let lineTotal = item.unitPrice * item.qty;
-    if (item.discount) {
-      lineTotal = lineTotal * (1 - item.discount);
-    }
-    // mutate the item!
-    // biome-ignore lint/suspicious/noExplicitAny: deliberate in bad starter
-    (item as any).lineTotal = lineTotal; // side effect on caller's data
-    lines.push({ sku: item.sku, qty: item.qty, unitPrice: item.unitPrice, lineTotal });
-    subtotal += lineTotal;
-  }
+const calculateLine = (item: CartItem): InvoiceLine => {
+  const discountRate = item.discount ?? 0;
+  return {
+    sku: item.sku,
+    qty: item.qty,
+    unitPrice: item.unitPrice,
+    lineTotal: roundCurrency(item.unitPrice * item.qty * (1 - discountRate)),
+  };
+};
 
-  const tax = subtotal * taxRate;
-  const total = subtotal + tax;
-
-  // also mutate the cart's items array order sometimes
-  cart.items.sort((a, b) => a.sku.localeCompare(b.sku));
-
-  console.log('[IMPURE] calculated invoice for', cart.id, 'at', now.toISOString());
+export function calculateInvoice(cart: Cart, taxRate: number, now: Date): Invoice {
+  const lines = cart.items.map(calculateLine);
+  const subtotal = roundCurrency(lines.reduce((sum, line) => sum + line.lineTotal, 0));
+  const tax = roundCurrency(subtotal * taxRate);
+  const total = roundCurrency(subtotal + tax);
 
   return {
-    id: `inv_${Date.now()}`,
+    id: `inv_${cart.id}_${now.getTime()}`,
     cartId: cart.id,
     lines,
     subtotal,

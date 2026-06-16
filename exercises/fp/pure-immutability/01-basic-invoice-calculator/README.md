@@ -13,7 +13,7 @@ You inherited a `calculateInvoice` function used by the checkout flow. It was wr
 - Output must be a new object; input cart/items must be untouched.
 
 ## Starter
-See `src/invoiceCalculator.ts` — the functions mutate inputs and hide side effects.
+The provided implementation in `src/invoiceCalculator.ts` already demonstrates pure immutability: `readonly` types on inputs, fresh `Invoice`/`InvoiceLine` values produced via `map` + `reduce` with no mutation of `cart` or nested items, plus explicit `now: Date` and `taxRate` parameters (no hidden `Date.now`, console, or non-determinism inside the functions). The public `calculateInvoice` signature and test contract are unchanged. Use the Criteria to evaluate fidelity or further refine while keeping the public contract.
 
 ## Criteria (principle-specific)
 - `calculateInvoice` (and all helpers it calls) are **pure**: same (cart, now, taxRate) → same output, every time.
