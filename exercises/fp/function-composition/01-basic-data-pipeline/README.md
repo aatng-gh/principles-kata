@@ -12,7 +12,7 @@ A data import job has a single 40-line `processCSV` that parses, lowercases name
 - VIP category becomes PREMIUM.
 
 ## Starter (what you are given)
-See `src/dataPipeline.ts` — the single large imperative function.
+The provided implementation in `src/dataPipeline.ts` already demonstrates function composition via small named pure stage functions (`parseRows`, `cleanRows`, `parseAmounts`, `keepValidAmounts`, `enrichCategory`) whose outputs flow into the top-level `processCSV` composition (chained application of the stages). The public `processCSV` entry point and contract are unchanged. Use the Criteria to evaluate fidelity or further refine while keeping the public contract.
 
 ## Criteria (principle-specific)
 - The work is decomposed into 4-7 tiny pure named stages (e.g. `parseRows`, `cleanNames`, `enrichCategory`, `validateAmount`, `toRecords`).

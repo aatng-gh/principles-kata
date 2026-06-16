@@ -13,7 +13,7 @@ A user registration form validator is a single function with early returns and a
 - Happy and error cases both exercised by tests.
 
 ## Starter (what you are given)
-See `src/validationRailway.ts` — the mixed validation + enrichment in one fn using mutable errors array.
+See `src/validationRailway.ts` (independent Result-returning stages `validateName`/`validateEmail`/`validateAge`/`normalizeFormResult`/`enrichLoyaltyTier` + `processForm` using sequential `flatMap` lets for a clear top-level declarative composition site). Refine per Criteria if desired while preserving the public contract and short-circuit behavior.
 
 ## Criteria (principle-specific)
 - Each validation/enrichment is a separate 3-8 line pure fn: e.g. `validateName`, `validateEmail`, `validateAge`, `enrichLoyaltyTier`.

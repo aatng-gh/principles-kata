@@ -1,36 +1,62 @@
 // exercises/fp/function-composition/01-basic-data-pipeline/src/dataPipeline.ts
-// STARTER — one big imperative function doing parse/clean/enrich/validate/serialize.
-
 export interface RawRow {
-  [key: string]: string;
+  readonly id: string;
+  readonly name: string;
+  readonly amount: string;
+  readonly category: string;
 }
 
 export interface ProcessedRecord {
-  id: string;
-  name: string;
-  amount: number;
-  category: string;
+  readonly id: string;
+  readonly name: string;
+  readonly amount: number;
+  readonly category: string;
 }
 
-export function processCSV(csv: string): ProcessedRecord[] {
-  // big mixed fn
-  const lines = csv.trim().split('\n');
-  const records: ProcessedRecord[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    // skip header
-    const line = lines[i];
-    if (!line) continue;
-    const parts = line.split(',');
-    if (parts.length < 4) continue;
-    const id = (parts[0] ?? '').trim();
-    const name = (parts[1] ?? '').trim().toLowerCase();
-    const amtStr = (parts[2] ?? '').trim();
-    let cat = (parts[3] ?? '').trim().toUpperCase();
-    const amt = Number.parseFloat(amtStr);
-    if (Number.isNaN(amt) || amt < 0) continue; // "validate"  // deliberate bad starter keeps old isNaN style in spirit but biome fixed
-    // enrich
-    if (cat === 'VIP') cat = 'PREMIUM';
-    records.push({ id, name, amount: Math.round(amt * 100) / 100, category: cat });
-  }
-  return records;
+interface CleanRow {
+  readonly id: string;
+  readonly name: string;
+  readonly amount: string;
+  readonly category: string;
 }
+
+interface ParsedRecord {
+  readonly id: string;
+  readonly name: string;
+  readonly amount: number;
+  readonly category: string;
+}
+
+const roundCurrency = (amount: number): number => Math.round(amount * 100) / 100;
+
+const parseRows = (csv: string): RawRow[] =>
+  csv
+    .trim()
+    .split('\n')
+    .slice(1)
+    .map((line) => line.split(','))
+    .filter((parts) => parts.length >= 4)
+    .map(([id = '', name = '', amount = '', category = '']) => ({ id, name, amount, category }));
+
+const cleanRows = (rows: readonly RawRow[]): CleanRow[] =>
+  rows.map((row) => ({
+    id: row.id.trim(),
+    name: row.name.trim().toLowerCase(),
+    amount: row.amount.trim(),
+    category: row.category.trim().toUpperCase(),
+  }));
+
+const parseAmounts = (rows: readonly CleanRow[]): ParsedRecord[] =>
+  rows.map((row) => ({ ...row, amount: Number.parseFloat(row.amount) }));
+
+const keepValidAmounts = (rows: readonly ParsedRecord[]): ParsedRecord[] =>
+  rows.filter((row) => Number.isFinite(row.amount) && row.amount >= 0);
+
+const enrichCategory = (row: ParsedRecord): ProcessedRecord => ({
+  ...row,
+  amount: roundCurrency(row.amount),
+  category: row.category === 'VIP' ? 'PREMIUM' : row.category,
+});
+
+export const processCSV = (csv: string): ProcessedRecord[] =>
+  keepValidAmounts(parseAmounts(cleanRows(parseRows(csv)))).map(enrichCategory);
