@@ -1,8 +1,4 @@
 // exercises/oop/interface-segregation/02-intermediate-ecommerce-admin/src/ecommerceAdmin.ts
-// THIS IS THE STARTER — one broad IAdminService.
-// The three modules take the fat interface but only use subsets.
-// God impl provides everything (tests pass via the exercised paths).
-
 export interface Order {
   id: string;
   total: number;
@@ -14,28 +10,43 @@ export interface Report {
   totalSales: number;
 }
 
-export interface IAdminService {
-  // orders
+export interface IOrderReader {
   getOrder(id: string): Order | undefined;
   listRecentOrders(limit: number): Order[];
-  refundOrder(id: string, amount: number): void;
+}
 
-  // inventory
+export interface IReporting {
+  generateSalesReport(period: string): Report;
+}
+
+export interface IInventoryOps {
   getStock(sku: string): number;
   updateStock(sku: string, delta: number): void;
   getLowStock(threshold: number): string[];
+}
 
-  // reports
+export interface IFinanceOps {
+  refundOrder(id: string, amount: number): void;
   generateSalesReport(period: string): Report;
+}
 
-  // users
+export interface IUserAdmin {
   suspendUser(userId: string): void;
   getUserStatus(userId: string): string;
+}
 
-  // promos
+export interface IPromoAdmin {
   createPromo(code: string, percent: number): void;
   listActivePromos(): string[];
 }
+
+export interface IAdminService
+  extends IOrderReader,
+    IReporting,
+    IInventoryOps,
+    IFinanceOps,
+    IUserAdmin,
+    IPromoAdmin {}
 
 export class GodAdminService implements IAdminService {
   private orders = new Map<string, Order>();
@@ -96,10 +107,8 @@ export class GodAdminService implements IAdminService {
   }
 }
 
-// Modules that only need a slice but are typed to the whole thing in the starter.
-
 export class ReportingDashboard {
-  constructor(private admin: IAdminService) {}
+  constructor(private admin: IReporting & IOrderReader) {}
   getSummary(period: string) {
     const report = this.admin.generateSalesReport(period);
     const recent = this.admin.listRecentOrders(5);
@@ -108,7 +117,7 @@ export class ReportingDashboard {
 }
 
 export class InventoryClerk {
-  constructor(private admin: IAdminService) {}
+  constructor(private admin: IInventoryOps) {}
   restock(sku: string, qty: number) {
     this.admin.updateStock(sku, qty);
   }
@@ -118,7 +127,7 @@ export class InventoryClerk {
 }
 
 export class FinanceModule {
-  constructor(private admin: IAdminService) {}
+  constructor(private admin: IFinanceOps) {}
   issueRefund(orderId: string, amount: number) {
     this.admin.refundOrder(orderId, amount);
   }
