@@ -1,29 +1,50 @@
 // exercises/fp/higher-order-functions/01-basic-policy-applicator/src/policyApplicator.ts
-// STARTER — duplicated if/else and loops for conditional policies.
-
 export interface PolicyInput {
-  amount: number;
-  userType: 'guest' | 'member';
-  region: string;
+  readonly amount: number;
+  readonly userType: 'guest' | 'member';
+  readonly region: string;
 }
 
-export function applyPolicies(input: PolicyInput): number {
-  let result = input.amount;
+type AmountCalculator = (input: PolicyInput) => number;
+type Policy = (calculator: AmountCalculator) => AmountCalculator;
 
-  // discount if member
-  if (input.userType === 'member') {
-    result = result * 0.9;
-  }
+const composePolicies =
+  (policies: readonly Policy[]) =>
+  (base: AmountCalculator): AmountCalculator =>
+    policies.reduce((calculator, policy) => policy(calculator), base);
 
-  // cap for certain region
-  if (input.region === 'EU') {
-    result = Math.min(result, 100);
-  }
+const baseAmount: AmountCalculator = (input) => input.amount;
 
-  // log sometimes
-  if (input.userType === 'guest' && input.amount > 50) {
-    console.log('high value guest', input.amount);
-  }
+const when =
+  (predicate: (input: PolicyInput) => boolean, transform: (amount: number) => number): Policy =>
+  (calculator) =>
+  (input) => {
+    const amount = calculator(input);
+    return predicate(input) ? transform(amount) : amount;
+  };
 
-  return result;
-}
+const withGuestLogging =
+  (threshold: number): Policy =>
+  (calculator) =>
+  (input) => {
+    if (input.userType === 'guest' && input.amount > threshold) {
+      console.log('high value guest', input.amount);
+    }
+    return calculator(input);
+  };
+
+const policies: readonly Policy[] = [
+  when(
+    (input) => input.userType === 'member',
+    (amount) => amount * 0.9
+  ),
+  when(
+    (input) => input.region === 'EU',
+    (amount) => Math.min(amount, 100)
+  ),
+  withGuestLogging(50),
+];
+
+const configuredCalculator = composePolicies(policies)(baseAmount);
+
+export const applyPolicies = (input: PolicyInput): number => configuredCalculator(input);

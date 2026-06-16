@@ -13,7 +13,7 @@ An event bus uses a switch/if on event.type inside dispatch, and every branch ma
 - Existing registrations in starter must continue to work.
 
 ## Starter (what you are given)
-See `src/eventDispatcher.ts` — switchless but still has the registration of raw handlers + cross cuts conceptually duplicated at call sites or inside dispatch.
+See `src/eventDispatcher.ts` — oblivious cross-cut HOFs (`withAuthz`, `withReplay`, `withMetrics` with no kind logic inside), `composeMiddleware`, thin dispatch lookup, and registration sites that compose wrappers (defaults for most events; one-off list for Refund authz policy). The public contract and replay/metrics behavior are stable. Refine per Criteria.
 
 ## Criteria (principle-specific)
 - Handlers are plain fns; cross-cuts are HOFs: `withMetrics(handler)`, `withReplay(handler)`.
